@@ -6,7 +6,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { verifyWebhook, processWebhook } from './controllers/webhook.controller.js';
-import { sendWhatsAppMessage } from './controllers/outbound.controller.js';
+import { markWhatsAppRead, sendWhatsAppMessage } from './controllers/outbound.controller.js';
 
 dotenv.config();
 
@@ -18,7 +18,12 @@ app.use(cors({
   origin: (process.env.CORS_ORIGINS || 'http://localhost:4000,http://localhost:5174').split(',').map((s) => s.trim()),
   credentials: true,
 }));
-app.use(express.json({ limit: '8mb' }));
+app.use(express.json({
+  limit: '8mb',
+  verify: (req, _res, buf) => {
+    (req as express.Request & { rawBody?: Buffer }).rawBody = buf;
+  },
+}));
 app.use(express.urlencoded({ extended: true, limit: '8mb' }));
 app.use(morgan('dev'));
 
@@ -33,6 +38,7 @@ app.post('/w_api/v1/webhooks/whatsapp', processWebhook);
 
 // Outbound Dispatch endpoint (called internally by CGS_Backend)
 app.post('/w_api/v1/whatsapp/send', sendWhatsAppMessage);
+app.post('/w_api/v1/whatsapp/read', markWhatsAppRead);
 
 app.listen(PORT, () => {
   console.log(`================================================================`);
